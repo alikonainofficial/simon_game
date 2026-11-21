@@ -50,6 +50,7 @@
   frame.style.aspectRatio = '';
   frame.insertBefore(board, frame.querySelector('.arcade-overlay'));
   frame.parentNode.insertBefore(modesEl, frame);
+  frame.parentNode.insertBefore(document.getElementById('hint'), frame.nextSibling);
 
   var mode = Arcade.store.get('mode', 'daily');
   if (mode !== 'daily' && mode !== 'endless') mode = 'daily';

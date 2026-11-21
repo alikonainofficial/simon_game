@@ -137,4 +137,6 @@
   .pad, .pad.pressed { transform: none; transition: filter 120ms ease-out, box-shadow 120ms ease-out; }
 }
 
+.simon-hint { margin: 0; text-align: center; font-size: 14px; color: #b3c8c0; }
+
 .simon-footer { margin: 4px 0 12px; font-size: 12px; color: #b3c8c0; opacity: 0.7; }
