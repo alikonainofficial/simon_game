@@ -31,6 +31,7 @@
   var hubSub = document.getElementById('hubSub');
   var modesEl = document.getElementById('modes');
   var modeBtns = Array.prototype.slice.call(modesEl.querySelectorAll('.mode-btn'));
+  var practiceEl = document.getElementById('practice');
 
   var state = 'idle';
   var seq = [];       // pad indices
@@ -41,7 +42,7 @@
   var nextAction = null; // what a 'between' / 'dying' pause resumes into
   var pausedFrom = null;
   var last = null;       // result of the last finished game, for the overlay and share line
-  var run = null;        // { mode, day, dayNo, rand, sig } fixed when a game starts
+  var run = null;        // { mode, practice, scored, bestBefore, day, dayNo, rand, sig } fixed when a game starts
 
   // ------------------------------------------------------------ shell
   Arcade.init({ game: 'simon', title: 'Simon', onRestart: startRound, onPauseChange: onPause });
@@ -66,7 +67,8 @@
     timers.forEach(clearTimeout);
     timers = [];
     nextAction = null;
-    padEls.forEach(function (el) { el.classList.remove('lit'); });
+    padEls.forEach(function (el) { el.classList.remove('lit', 'pressed'); });
+    board.classList.remove('wrong', 'pulse', 'board-flash');
   }
   // Enter a short transitional state that runs fn after ms (and resumes into fn after a pause).
   function transition(name, fn, ms) {
@@ -121,7 +123,11 @@
   function startRound() {
     cancelAll();
     Arcade.ui.hideOverlay();
-    run = { mode: mode, day: Arcade.rng.todayKey(), dayNo: Arcade.rng.dayNumber() };
+    run = { mode: mode, practice: practiceEl.checked, day: Arcade.rng.todayKey(), dayNo: Arcade.rng.dayNumber() };
+    var d = Arcade.store.get('daily', null);
+    // Would this run write a best? (Practice never; Daily only on the day's first attempt.)
+    run.scored = !run.practice && (mode === 'endless' || !(d && d.day === run.day));
+    run.bestBefore = Arcade.store.get('best', 0);
     if (mode === 'daily') {
       // Same seeded stream for everyone on the same local date; drawn lazily, in order.
       run.rand = Arcade.rng.daily(DAILY_SALT);
@@ -161,10 +167,15 @@
       var ms = Math.min(300, onMs());
       light(i, ms);
       tone(i, ms);
+      kick(padEls[i], 'pressed', 80);
       step++;
       if (step === seq.length) {
         level++;
-        later(function () { Arcade.sfx.play('score'); }, 150);
+        later(function () {
+          Arcade.sfx.play('score');
+          kick(board, 'pulse', 260);
+          if (run.scored && run.bestBefore > 0 && level === run.bestBefore + 1) kick(board, 'board-flash', 300);
+        }, 150);
         transition('between', nextRound, 900);
         render();
       }
@@ -177,7 +188,8 @@
     Arcade.sfx.play('buzz');
     kick(board, 'wrong', 300);
     light(seq[step], 600); // show what it should have been
-    transition('dying', gameOver, 900);
+    if (run.practice) transition('between', playSequence, 1100); // replay and try again
+    else transition('dying', gameOver, 900);
     render();
   }
 
@@ -252,6 +264,7 @@
   modeBtns.forEach(function (btn) {
     btn.addEventListener('click', function () { setMode(btn.dataset.mode); btn.blur(); });
   });
+  practiceEl.addEventListener('change', function () { practiceEl.blur(); toIdle(); });
 
   // ------------------------------------------------------------ pause
   function onPause(p) {
@@ -282,6 +295,7 @@
     } else {
       hud.Mode = 'Endless';
     }
+    if (practiceEl.checked) hud.Mode += ' · Practice';
     Arcade.ui.hud(hud);
     modeBtns.forEach(function (btn) { btn.setAttribute('aria-pressed', String(btn.dataset.mode === mode)); });
     var main = String(level), sub = '';
@@ -289,7 +303,7 @@
       case 'idle': main = 'Start'; sub = 'tap a pad'; break;
       case 'showing': sub = 'watch'; break;
       case 'listening': sub = 'your turn'; break;
-      case 'between': sub = 'nice'; break;
+      case 'between': sub = step < seq.length ? 'try again' : 'nice'; break;
       case 'dying': sub = 'game over'; break;
       case 'over': case 'paused': main = ''; break; // the shell overlay carries the message
 
