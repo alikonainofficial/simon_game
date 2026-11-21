@@ -20,13 +20,17 @@
     Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3,
     ArrowUp: 0, ArrowRight: 1, ArrowLeft: 2, ArrowDown: 3
   };
+  var EMOJI = ['🟩', '🟥', '🟨', '🟦']; // by pad index
   var LEAD_IN = 600; // ms before a playback starts
+  var DAILY_SALT = 7;
 
   var board = document.getElementById('board');
   var padEls = Array.prototype.slice.call(board.querySelectorAll('.pad'));
   var hub = document.getElementById('hub');
   var hubMain = document.getElementById('hubMain');
   var hubSub = document.getElementById('hubSub');
+  var modesEl = document.getElementById('modes');
+  var modeBtns = Array.prototype.slice.call(modesEl.querySelectorAll('.mode-btn'));
 
   var state = 'idle';
   var seq = [];       // pad indices
@@ -36,14 +40,18 @@
   var litTimer = [0, 0, 0, 0];
   var nextAction = null; // what a 'between' / 'dying' pause resumes into
   var pausedFrom = null;
-  var mode = 'endless';
   var last = null;       // result of the last finished game, for the overlay and share line
+  var run = null;        // { mode, day, dayNo, rand, sig } fixed when a game starts
 
   // ------------------------------------------------------------ shell
   Arcade.init({ game: 'simon', title: 'Simon', onRestart: startRound, onPauseChange: onPause });
   var frame = document.querySelector('.arcade-frame');
   frame.style.aspectRatio = '';
   frame.insertBefore(board, frame.querySelector('.arcade-overlay'));
+  frame.parentNode.insertBefore(modesEl, frame);
+
+  var mode = Arcade.store.get('mode', 'daily');
+  if (mode !== 'daily' && mode !== 'endless') mode = 'daily';
 
   // ------------------------------------------------------------ timing helpers
   function later(fn, ms) {
@@ -73,6 +81,25 @@
     later(function () { el.classList.remove(cls); }, ms);
   }
 
+  // ------------------------------------------------------------ days (YYYYMMDD keys, local time)
+  function shiftDay(key, delta) {
+    var d = new Date(Math.floor(key / 10000), Math.floor(key / 100) % 100 - 1, key % 100 + delta);
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }
+  // Current streak as of `day`: only counts if the last daily was that day or the day before.
+  function streakOn(day) {
+    var s = Arcade.store.get('streak', null);
+    if (!s || !s.count) return 0;
+    return (s.lastDay === day || s.lastDay === shiftDay(day, -1)) ? s.count : 0;
+  }
+  function bumpStreak(day) {
+    var s = Arcade.store.get('streak', null) || { count: 0, lastDay: 0 };
+    if (s.lastDay === day) return;
+    s.count = s.lastDay === shiftDay(day, -1) ? (s.count | 0) + 1 : 1;
+    s.lastDay = day;
+    Arcade.store.set('streak', s);
+  }
+
   function onMs() { return Math.max(250, 600 - level * 25); }
 
   // ------------------------------------------------------------ sound + light
@@ -94,6 +121,13 @@
   function startRound() {
     cancelAll();
     Arcade.ui.hideOverlay();
+    run = { mode: mode, day: Arcade.rng.todayKey(), dayNo: Arcade.rng.dayNumber() };
+    if (mode === 'daily') {
+      // Same seeded stream for everyone on the same local date; drawn lazily, in order.
+      run.rand = Arcade.rng.daily(DAILY_SALT);
+      var sigRand = Arcade.rng.daily(DAILY_SALT);
+      run.sig = [0, 1, 2, 3].map(function () { return EMOJI[Math.floor(sigRand() * 4)]; }).join('');
+    }
     seq = [];
     level = 0;
     step = 0;
@@ -101,7 +135,7 @@
   }
 
   function nextRound() {
-    seq.push(Math.floor(Math.random() * 4));
+    seq.push(Math.floor((run.mode === 'daily' ? run.rand() : Math.random()) * 4));
     playSequence();
   }
 
@@ -149,9 +183,25 @@
 
   function gameOver() {
     state = 'over';
-    var r = Arcade.store.best('best', level); // overall best: the one number the portfolio card shows
+    var scored = true, note = null;
+    if (run.mode === 'daily') {
+      var d = Arcade.store.get('daily', null);
+      if (d && d.day === run.day) {
+        // One scored attempt per day; later runs still play but don't count.
+        scored = false;
+        d.attempts = (d.attempts | 0) + 1;
+        Arcade.store.set('daily', d);
+        note = 'Today\'s score stays at ' + d.level + '; practice run';
+      } else {
+        Arcade.store.set('daily', { day: run.day, level: level, attempts: 1 });
+        Arcade.store.best('dailyBest.' + run.day, level);
+        bumpStreak(run.day);
+      }
+    }
+    // Overall best: the one number the portfolio card shows.
+    var r = scored ? Arcade.store.best('best', level) : { best: Arcade.store.get('best', 0), isNew: false };
     Arcade.store.bumpPlays();
-    last = { level: level, best: r.best, isNew: r.isNew && level > 0 };
+    last = { run: run, level: level, best: r.best, isNew: r.isNew && level > 0, note: note };
     render();
     showResults();
   }
@@ -160,7 +210,8 @@
     Arcade.ui.overlay({
       kicker: 'Game over',
       title: 'Level ' + last.level,
-      lines: [last.isNew ? 'New best!' : 'Best ' + last.best],
+      lines: (last.note ? [last.note] : last.run.mode === 'daily' ? ['Daily #' + last.run.dayNo] : [])
+        .concat([last.isNew ? 'New best!' : 'Best ' + last.best]),
       buttons: [
         { label: 'Play again', onClick: startRound },
         { label: 'Copy result', keepOpen: true, onClick: copyResult }
@@ -171,12 +222,36 @@
   }
 
   function shareText() {
-    return 'Simon · Level ' + last.level + ' · best ' + last.best;
+    if (last.run.mode !== 'daily') return 'Simon · Level ' + last.level + ' · best ' + last.best;
+    var d = Arcade.store.get('daily', null);
+    var lvl = d && d.day === last.run.day ? d.level : last.level; // the scored run, not a replay
+    var streak = streakOn(last.run.day);
+    return 'Simon #' + last.run.dayNo + ' · Level ' + lvl + ' ' + last.run.sig +
+      (streak >= 2 ? ' · ' + streak + '-day streak' : '');
   }
   function copyResult() {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     Arcade.share.copy(shareText());
   }
+
+  // ------------------------------------------------------------ modes
+  function toIdle() {
+    state = 'idle'; // first, so the unpause below doesn't resume anything
+    cancelAll();
+    if (Arcade.isPaused()) Arcade.pause(false);
+    Arcade.ui.hideOverlay();
+    seq = []; level = 0; step = 0;
+    render();
+  }
+  function setMode(m) {
+    if (m === mode) return;
+    mode = m;
+    Arcade.store.set('mode', m);
+    toIdle();
+  }
+  modeBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () { setMode(btn.dataset.mode); btn.blur(); });
+  });
 
   // ------------------------------------------------------------ pause
   function onPause(p) {
@@ -199,7 +274,16 @@
 
   // ------------------------------------------------------------ render
   function render() {
-    Arcade.ui.hud({ Level: level, Best: Arcade.store.get('best', 0), Mode: 'Endless' });
+    var hud = { Level: level, Best: Arcade.store.get('best', 0) };
+    if (mode === 'daily') {
+      hud.Mode = 'Daily #' + Arcade.rng.dayNumber();
+      var streak = streakOn(Arcade.rng.todayKey());
+      if (streak >= 1) hud['🔥'] = streak + '-day streak';
+    } else {
+      hud.Mode = 'Endless';
+    }
+    Arcade.ui.hud(hud);
+    modeBtns.forEach(function (btn) { btn.setAttribute('aria-pressed', String(btn.dataset.mode === mode)); });
     var main = String(level), sub = '';
     switch (state) {
       case 'idle': main = 'Start'; sub = 'tap a pad'; break;

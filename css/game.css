@@ -91,6 +91,17 @@
 }
 .hub-sub { font-size: clamp(10px, 1.8vmin, 13px); color: #b3c8c0; letter-spacing: 0.06em; text-transform: uppercase; }
 
+/* Mode bar (sits between the HUD and the frame). */
+.simon-modes { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+.mode-toggle { display: inline-flex; padding: 3px; border-radius: 999px; background: #061315; box-shadow: inset 0 0 0 1px #2a5a63; }
+.mode-btn {
+  appearance: none; -webkit-appearance: none; border: 0; margin: 0; padding: 6px 16px; border-radius: 999px;
+  background: transparent; color: #b3c8c0; font: inherit; cursor: pointer;
+}
+.mode-btn:hover { color: #efd096; }
+.mode-btn[aria-pressed="true"] { background: #163a42; color: #efd096; box-shadow: inset 0 0 0 1px #e2bb6e; }
+.mode-btn:focus-visible { outline: 2px solid #efd096; outline-offset: 2px; }
+
 /* Wrong answer: shake the board. */
 .simon-board.wrong { animation: simon-shake 300ms ease-in-out; }
 @keyframes simon-shake {

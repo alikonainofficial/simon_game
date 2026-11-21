@@ -13,6 +13,13 @@
   <!-- Arcade.init wraps this canvas; it stays hidden and the board below is moved into the frame. -->
   <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
 
+  <div class="simon-modes" id="modes">
+    <div class="mode-toggle" role="group" aria-label="Mode">
+      <button type="button" class="mode-btn" data-mode="daily" aria-pressed="true">Daily</button>
+      <button type="button" class="mode-btn" data-mode="endless" aria-pressed="false">Endless</button>
+    </div>
+  </div>
+
   <div class="simon-board" id="board">
     <button type="button" class="pad pad-green" data-pad="0" aria-label="Green (key 1 or Up)"><span class="pad-key">1 ↑</span></button>
     <button type="button" class="pad pad-red" data-pad="1" aria-label="Red (key 2 or Right)"><span class="pad-key">2 →</span></button>
