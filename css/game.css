@@ -1,0 +1,142 @@
+/* Simon: board, pads and hub. Loaded before css/arcade-shell.css. */
+
+.simon-board {
+  --gap: clamp(8px, 2vmin, 14px);
+  position: relative;
+  isolation: isolate; /* keep lit pads under the shell overlay */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--gap);
+  box-sizing: border-box;
+  width: min(100%, 540px, max(240px, 100vh - 250px));
+  aspect-ratio: 1;
+  margin: 10px auto;
+  padding: var(--gap);
+  border-radius: 50%;
+  background: #061315;
+  box-shadow: inset 0 0 0 2px #163a42;
+}
+
+.pad {
+  --c: #7ed9a0;
+  position: relative;
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 12px;
+  background: var(--c);
+  filter: brightness(0.48) saturate(0.8);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  transition: filter 120ms ease-out, box-shadow 120ms ease-out, transform 80ms ease-out;
+}
+.pad:focus-visible { outline: 3px solid #efd096; outline-offset: 3px; }
+.pad-green  { --c: #7ed9a0; border-top-left-radius: 100%; }
+.pad-red    { --c: #e0564b; border-top-right-radius: 100%; }
+.pad-yellow { --c: #f2d16b; border-bottom-left-radius: 100%; }
+.pad-blue   { --c: #5b8def; border-bottom-right-radius: 100%; }
+
+.pad.lit {
+  filter: brightness(1.15) saturate(1.1);
+  box-shadow: 0 0 22px 3px var(--c), 0 0 56px 10px var(--c);
+  z-index: 1;
+  transition-duration: 30ms;
+}
+
+.pad.pressed { transform: scale(0.96); }
+
+.pad-key {
+  position: absolute;
+  font-family: "Pixelify Sans", "Silkscreen", "Courier New", monospace;
+  font-size: clamp(11px, 2.2vmin, 15px);
+  color: rgba(4, 9, 10, 0.7);
+  pointer-events: none;
+}
+.pad-green .pad-key  { left: 30%; top: 30%; }
+.pad-red .pad-key    { right: 30%; top: 30%; }
+.pad-yellow .pad-key { left: 30%; bottom: 30%; }
+.pad-blue .pad-key   { right: 30%; bottom: 30%; }
+@media (pointer: coarse) { .pad-key { display: none; } }
+
+.simon-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 36%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: var(--gap) solid #061315;
+  background: #04090a;
+  box-shadow: inset 0 0 0 2px #163a42;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+  touch-action: manipulation;
+}
+.simon-hub.can-start { cursor: pointer; }
+.hub-main {
+  font-family: "Pixelify Sans", "Silkscreen", "Courier New", monospace;
+  font-size: clamp(20px, 5.5vmin, 40px);
+  line-height: 1;
+  color: #efd096;
+}
+.hub-sub { font-size: clamp(10px, 1.8vmin, 13px); color: #b3c8c0; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Mode bar (sits between the HUD and the frame). */
+.simon-modes { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+.mode-toggle { display: inline-flex; padding: 3px; border-radius: 999px; background: #061315; box-shadow: inset 0 0 0 1px #2a5a63; }
+.mode-btn {
+  appearance: none; -webkit-appearance: none; border: 0; margin: 0; padding: 6px 16px; border-radius: 999px;
+  background: transparent; color: #b3c8c0; font: inherit; cursor: pointer;
+}
+.mode-btn:hover { color: #efd096; }
+.mode-btn[aria-pressed="true"] { background: #163a42; color: #efd096; box-shadow: inset 0 0 0 1px #e2bb6e; }
+.mode-btn:focus-visible { outline: 2px solid #efd096; outline-offset: 2px; }
+.practice { display: inline-flex; align-items: center; gap: 6px; color: #b3c8c0; cursor: pointer; }
+.practice input { width: 16px; height: 16px; margin: 0; accent-color: #e2bb6e; cursor: pointer; }
+.practice:has(input:checked) { color: #efd096; }
+
+/* Wrong answer: shake the board. */
+.simon-board.wrong { animation: simon-shake 300ms ease-in-out; }
+@keyframes simon-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  40% { transform: translateX(9px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(4px); }
+}
+
+/* Level up: one pulse. New best: gold flash. */
+.simon-board.pulse { animation: simon-pulse 260ms ease-out; }
+@keyframes simon-pulse {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.03); }
+}
+.simon-board.board-flash { animation: simon-gold 300ms ease-out; }
+.simon-board.pulse.board-flash { animation: simon-pulse 260ms ease-out, simon-gold 300ms ease-out; }
+@keyframes simon-gold {
+  0% { background: #e2bb6e; box-shadow: inset 0 0 0 2px #efd096, 0 0 48px 6px rgba(226, 187, 110, 0.75); }
+  100% { background: #061315; box-shadow: inset 0 0 0 2px #163a42, 0 0 0 0 rgba(226, 187, 110, 0); }
+}
+
+/* Reduced motion: no shake, pulse or press scale; lit states and the colour flash stay. */
+@media (prefers-reduced-motion: reduce) {
+  .simon-board.wrong, .simon-board.pulse { animation: none; }
+  .simon-board.pulse.board-flash { animation: simon-gold 300ms ease-out; }
+  .pad, .pad.pressed { transform: none; transition: filter 120ms ease-out, box-shadow 120ms ease-out; }
+}
+
+.simon-hint { margin: 0; text-align: center; font-size: 14px; color: #b3c8c0; }
+
+.simon-footer { margin: 4px 0 12px; font-size: 12px; color: #b3c8c0; opacity: 0.7; }

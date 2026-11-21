@@ -1,47 +1,42 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
-
+<html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Simon</title>
-  <link rel="stylesheet" href="styles.css">
-  <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet">
+  <meta name="description" content="Simon: watch the pattern, then repeat it.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/game.css">
+  <link rel="stylesheet" href="css/arcade-shell.css">
 </head>
-
 <body>
-  <h1 id="level-title">Press A Key to Start</h1>
-  <div class="container">
-    <div lass="row">
+  <!-- Arcade.init wraps this canvas; it stays hidden and the board below is moved into the frame. -->
+  <canvas id="gameCanvas" width="800" height="600" style="display:none"></canvas>
 
-      <div type="button" id="green" class="btn green">
-
-      </div>
-
-      <div type="button" id="red" class="btn red">
-
-      </div>
+  <div class="simon-modes" id="modes">
+    <div class="mode-toggle" role="group" aria-label="Mode">
+      <button type="button" class="mode-btn" data-mode="daily" aria-pressed="true">Daily</button>
+      <button type="button" class="mode-btn" data-mode="endless" aria-pressed="false">Endless</button>
     </div>
-
-    <div class="row">
-
-      <div type="button" id="yellow" class="btn yellow">
-
-      </div>
-      <div type="button" id="blue" class="btn blue">
-
-      </div>
-
-    </div>
-
+    <label class="practice"><input type="checkbox" id="practice"> Practice</label>
   </div>
 
-  <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
-  <script src="game.js" charset="utf-8"></script>
+  <div class="simon-board" id="board">
+    <button type="button" class="pad pad-green" data-pad="0" aria-label="Green (key 1 or Up)"><span class="pad-key">1 ↑</span></button>
+    <button type="button" class="pad pad-red" data-pad="1" aria-label="Red (key 2 or Right)"><span class="pad-key">2 →</span></button>
+    <button type="button" class="pad pad-yellow" data-pad="2" aria-label="Yellow (key 3 or Left)"><span class="pad-key">3 ←</span></button>
+    <button type="button" class="pad pad-blue" data-pad="3" aria-label="Blue (key 4 or Down)"><span class="pad-key">4 ↓</span></button>
+    <div class="simon-hub" id="hub" aria-live="polite">
+      <span class="hub-main" id="hubMain">Start</span>
+      <span class="hub-sub" id="hubSub">tap a pad</span>
+    </div>
+  </div>
 
-  <footer>
-    Made by WorksBetter
-  </footer>
+  <p class="simon-hint" id="hint">Watch, then repeat. Keys 1–4 or arrows.</p>
 
+  <footer class="simon-footer">Made by WorksBetter</footer>
+
+  <script src="js/arcade-shell.js"></script>
+  <script src="js/game.js"></script>
 </body>
-
 </html>
