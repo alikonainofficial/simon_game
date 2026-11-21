@@ -36,6 +36,8 @@
   var litTimer = [0, 0, 0, 0];
   var nextAction = null; // what a 'between' / 'dying' pause resumes into
   var pausedFrom = null;
+  var mode = 'endless';
+  var last = null;       // result of the last finished game, for the overlay and share line
 
   // ------------------------------------------------------------ shell
   Arcade.init({ game: 'simon', title: 'Simon', onRestart: startRound, onPauseChange: onPause });
@@ -147,13 +149,33 @@
 
   function gameOver() {
     state = 'over';
+    var r = Arcade.store.best('best', level); // overall best: the one number the portfolio card shows
+    Arcade.store.bumpPlays();
+    last = { level: level, best: r.best, isNew: r.isNew && level > 0 };
     render();
+    showResults();
+  }
+
+  function showResults() {
     Arcade.ui.overlay({
       kicker: 'Game over',
-      title: 'Level ' + level,
+      title: 'Level ' + last.level,
+      lines: [last.isNew ? 'New best!' : 'Best ' + last.best],
+      buttons: [
+        { label: 'Play again', onClick: startRound },
+        { label: 'Copy result', keepOpen: true, onClick: copyResult }
+      ],
       hint: 'Space or tap to retry',
       action: startRound
     });
+  }
+
+  function shareText() {
+    return 'Simon · Level ' + last.level + ' · best ' + last.best;
+  }
+  function copyResult() {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    Arcade.share.copy(shareText());
   }
 
   // ------------------------------------------------------------ pause
@@ -177,7 +199,7 @@
 
   // ------------------------------------------------------------ render
   function render() {
-    Arcade.ui.hud({ Level: level });
+    Arcade.ui.hud({ Level: level, Best: Arcade.store.get('best', 0), Mode: 'Endless' });
     var main = String(level), sub = '';
     switch (state) {
       case 'idle': main = 'Start'; sub = 'tap a pad'; break;
